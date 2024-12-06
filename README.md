@@ -6,12 +6,6 @@
   <a href="https://badge.fury.io/js/ng2-pdf-viewer">
     <img src="https://badge.fury.io/js/ng2-pdf-viewer.svg" alt="npm version">
   </a>
-  <a href="https://david-dm.org/vadimdez/ng2-pdf-viewer" title="dependencies status">
-    <img src="https://david-dm.org/vadimdez/ng2-pdf-viewer/status.svg"/>
-  </a>
-  <a href="https://travis-ci.org/VadimDez/ng2-pdf-viewer" title="test">
-    <img src="https://travis-ci.org/VadimDez/ng2-pdf-viewer.svg?branch=master"/>
-  </a>
   <a href="https://gitter.im/ngx-pdf-viewer/Lobby" title="Gitter">
     <img src="https://img.shields.io/gitter/room/nwjs/nw.js.svg" alt="Gitter"/>
   </a>
@@ -36,21 +30,31 @@
 
 ## Overview
 
-* [Install](README.md#install)
-* [Usage](README.md#usage)
-* [Options](README.md#options)
-* [Render local PDF file](README.md#render-local-pdf-file)
-* [Set custom path to the worker](README.md#set-custom-path-to-the-worker)
-* [Search in the PDF](README.md#search-in-the-pdf)
-* [Contribute](README.md#contribute)
+* [Install](#install)
+* [Usage](#usage)
+* [Options](#options)
+* [Render local PDF file](#render-local-pdf-file)
+* [Set custom path to the worker](#set-custom-path-to-the-worker)
+* [Search in the PDF](#search-in-the-pdf)
+* [Contribute](#contribute)
 
 ## Install
 
+### Angular >= 12
 ```
-npm install ng2-pdf-viewer --save
+npm install ng2-pdf-viewer
+```
+> Partial Ivy compilated library bundles.
+
+### Angular >= 4
+```
+npm install ng2-pdf-viewer@^7.0.0
 ```
 
-*Note: For angular 4 or less use version `3.0.8`*
+### Angular < 4
+```
+npm install ng2-pdf-viewer@~3.0.8
+```
 
 ## Usage
 
@@ -86,7 +90,8 @@ import { Component } from '@angular/core';
   template: `
   <pdf-viewer [src]="pdfSrc"
               [render-text]="true"
-              style="display: block;"
+              [original-size]="false"
+              style="width: 400px; height: 500px"
   ></pdf-viewer>
   `
 })
@@ -130,7 +135,7 @@ Pass pdf location
 [src]="'https://vadimdez.github.io/ng2-pdf-viewer/assets/pdf-test.pdf'"
 ```
 
-For more control you can pass options object to ```[src]```. [See other attributes for the object here](https://github.com/mozilla/pdf.js/blob/master/src/display/api.js#L109-L198).
+For more control you can pass options object to ```[src]```. [See other attributes for the object here](https://github.com/mozilla/pdf.js/blob/master/src/display/api.js#L130-L222).
 
 Options object for loading protected PDF would be:
 
@@ -161,7 +166,6 @@ supports two way data binding as well
 If you want that the `two way data binding` actually updates your `page` variable on page change/scroll - you have to be sure that you define the height of the container, for example:
 ```css
 pdf-viewer {
-    display: block;
     height: 100vh;
 }
 ```
@@ -505,30 +509,39 @@ onFileSelected() {
 
 ## Set custom path to the worker
 
-By default the `worker` is loaded from `cdnjs.cloudflare.com`.
+By default the `worker` is loaded from `cdn.jsdelivr.net`.
 
-In your code update `path` to the worker to be for example `/pdf.worker.js`
+In your code update `path` to the worker to be for example `/pdf.worker.mjs`
 ```typescript
-(window as any).pdfWorkerSrc = '/pdf.worker.js';
+(window as any).pdfWorkerSrc = '/pdf.worker.mjs';
 ```
+
 *This should be set before `pdf-viewer` component is rendered.*
 
+If you ever have a (super rare) edge case where you run in an environment that multiple
+components are somehow loaded within the same web page, sharing the same window,
+but using different versions of pdf.worker, support has been added.  You can do the
+above, except that you can append the specific version of pdfjs required and override the
+custom path *just for that version*.  This way setting the global window var won't conflict.
+```typescript
+(window as any)["pdfWorkerSrc2.14.305"] = '/pdf.worker.mjs';
+```
 
 ## Search in the PDF
 
-Use `pdfFindController` for search functionality.
+Use `eventBus` for the search functionality.
 
 In your component's ts file:
 
-* Add reference to `pdf-viewer`,
-* then when needed execute search()
+* Add reference to `pdf-viewer` component,
+* then when needed execute `search()` like this:
 
 ```typescript
 @ViewChild(PdfViewerComponent) private pdfComponent: PdfViewerComponent;
 
 search(stringToSearch: string) {
-  this.pdfComponent.pdfFindController.executeCommand('find', {
-    caseSensitive: false, findPrevious: undefined, highlightAll: true, phraseSearch: true, query: stringToSearch
+  this.pdfComponent.eventBus.dispatch('find', {
+    query: stringToSearch, type: 'again', caseSensitive: false, findPrevious: undefined, highlightAll: true, phraseSearch: true
   });
 }
 ```

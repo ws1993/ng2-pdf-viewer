@@ -5,41 +5,41 @@ import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
 import {
   PDFProgressData,
   PDFDocumentProxy,
-  PDFSource
+  PDFSource,
+  ZoomScale
 } from './pdf-viewer/pdf-viewer.module';
 
 import { PdfViewerComponent } from './pdf-viewer/pdf-viewer.component';
 
 @Component({
-  moduleId: module.id,
   selector: 'pdf-viewer-app',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
-  pdfSrc: string | PDFSource | ArrayBuffer = './assets/pdf-test.pdf';
+  pdfSrc: string | Uint8Array | PDFSource = './assets/pdf-test.pdf';
 
   error: any;
   page = 1;
   rotation = 0;
   zoom = 1.0;
-  zoomScale = 'page-width';
+  zoomScale: ZoomScale = 'page-width';
   originalSize = false;
   pdf: any;
   renderText = true;
-  progressData: PDFProgressData;
+  progressData!: PDFProgressData;
   isLoaded = false;
   stickToPage = false;
   showAll = true;
   autoresize = true;
   fitToPage = false;
-  outline: any[];
+  outline!: any[];
   isOutlineShown = false;
   pdfQuery = '';
   mobile = false;
 
   @ViewChild(PdfViewerComponent)
-  private pdfComponent: PdfViewerComponent;
+  private pdfComponent!: PdfViewerComponent;
 
   ngOnInit() {
     if (window.screen.width <= 768) {
@@ -140,10 +140,11 @@ export class AppComponent implements OnInit {
   }
 
   setPassword(password: string) {
-    let newSrc;
+    let newSrc: PDFSource;
 
     if (this.pdfSrc instanceof ArrayBuffer) {
-      newSrc = { data: this.pdfSrc };
+      newSrc = { data: this.pdfSrc as any };
+      // newSrc = { data: this.pdfSrc };
     } else if (typeof this.pdfSrc === 'string') {
       newSrc = { url: this.pdfSrc };
     } else {
@@ -176,7 +177,7 @@ export class AppComponent implements OnInit {
    * @param destination pdf navigate to
    */
   navigateTo(destination: any) {
-    this.pdfComponent.pdfLinkService.navigateTo(destination);
+    this.pdfComponent.pdfLinkService.goToDestination(destination);
   }
 
   /**
@@ -206,28 +207,31 @@ export class AppComponent implements OnInit {
     console.log('(page-initialized)', e);
   }
 
+  /**
+   * Page change callback, which is called when a page is changed (called multiple times)
+   *
+   * @param e number
+   */
+  pageChange(e: number) {
+    console.log('(page-change)', e);
+  }
+
   searchQueryChanged(newQuery: string) {
-    if (newQuery !== this.pdfQuery) {
-      this.pdfQuery = newQuery;
-      this.pdfComponent.pdfFindController.executeCommand('find', {
-        query: this.pdfQuery,
-        highlightAll: true
-      });
-    } else {
-      this.pdfComponent.pdfFindController.executeCommand('findagain', {
-        query: this.pdfQuery,
-        highlightAll: true
-      });
-    }
+    const type = newQuery !== this.pdfQuery ? '' : 'again';
+    this.pdfQuery = newQuery;
+
+    this.pdfComponent.eventBus.dispatch('find', {
+      type,
+      query: this.pdfQuery,
+      highlightAll: true,
+      caseSensitive: false,
+      phraseSearch: true,
+      // findPrevious: undefined,
+    });
   }
 
   @HostListener('window:resize', ['$event'])
-  onResize(event) {
-
-    if (event.target.innerWidth <= 768)
-      this.mobile = true;
-    else
-      this.mobile = false;
-      
+  onResize(event: Event) {
+    this.mobile = (event.target as Window).innerWidth <= 768;
   }
 }

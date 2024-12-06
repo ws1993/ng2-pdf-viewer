@@ -4,12 +4,15 @@ import { Component } from '@angular/core';
 import { PdfViewerComponent } from './pdf-viewer.component';
 import { PdfViewerModule } from './pdf-viewer.module';
 
+import { GlobalWorkerOptions } from 'pdfjs-dist';
+import * as PDFJS from 'pdfjs-dist';
+
 @Component({
   template: `
     <pdf-viewer></pdf-viewer>
   `
 })
-class TestComponent {}
+class TestComponent { }
 
 describe('AppComponent', () => {
   let pdfViewerFixture: ComponentFixture<PdfViewerComponent>;
@@ -20,7 +23,7 @@ describe('AppComponent', () => {
   function setPdf(numPages: number) {
     (pdfViewer as any)._pdf = {
       numPages,
-      destroy: () => {}
+      destroy: () => { }
     };
   }
 
@@ -89,7 +92,7 @@ describe('AppComponent', () => {
     const cMapUrl = 'assets/';
 
     it('should check default url', () => {
-      const PDFJS = require('pdfjs-dist/build/pdf');
+      const PDFJS = require('pdfjs-dist');
 
       expect((pdfViewer as any)._cMapsUrl).toBe(
         `https://unpkg.com/pdfjs-dist@${(PDFJS as any).version}/cmaps/`
@@ -97,7 +100,7 @@ describe('AppComponent', () => {
     });
 
     it('should return src', () => {
-      pdfViewer.cMapsUrl = null;
+      pdfViewer.cMapsUrl = "";
       pdfViewer.src = src;
 
       expect((pdfViewer as any).getDocumentParams()).toBe(src);
@@ -110,7 +113,9 @@ describe('AppComponent', () => {
       expect((pdfViewer as any).getDocumentParams()).toEqual({
         url: src,
         cMapUrl,
-        cMapPacked: true
+        cMapPacked: true,
+        enableXfa: true,
+        isEvalSupported: false,
       });
     });
 
@@ -121,7 +126,9 @@ describe('AppComponent', () => {
       expect((pdfViewer as any).getDocumentParams()).toEqual({
         url: src,
         cMapUrl,
-        cMapPacked: true
+        cMapPacked: true,
+        enableXfa: true,
+        isEvalSupported: false,
       });
     });
 
@@ -133,8 +140,57 @@ describe('AppComponent', () => {
       expect((pdfViewer as any).getDocumentParams()).toEqual({
         url: srcUrl,
         cMapUrl,
-        cMapPacked: true
+        cMapPacked: true,
+        enableXfa: true,
+        isEvalSupported: false,
       });
     });
   });
+
+  describe('pdf.worker location', () => {
+    const curPdfJsVersion = (PDFJS as any).version;
+
+    beforeEach(() => {
+      (window as any).pdfWorkerSrc = undefined;
+      (window as any)["pdfWorkerSrc1.2.3"] = undefined;
+      (window as any)[`pdfWorkerSrc${curPdfJsVersion}`] = undefined;
+
+    });
+
+    it('should default to the cdn', () => {
+      pdfViewerFixture = TestBed.createComponent(PdfViewerComponent);
+      pdfViewer = pdfViewerFixture.debugElement.componentInstance;
+
+      expect(GlobalWorkerOptions.workerSrc).toBe(`https://cdn.jsdelivr.net/npm/pdfjs-dist@${curPdfJsVersion
+        }/legacy/build/pdf.worker.min.mjs`);
+    })
+
+    it('should support global override', () => {
+      (window as any).pdfWorkerSrc = 'globaloverride';
+
+      pdfViewerFixture = TestBed.createComponent(PdfViewerComponent);
+      pdfViewer = pdfViewerFixture.debugElement.componentInstance;
+
+      expect(GlobalWorkerOptions.workerSrc).toBe('globaloverride');
+    })
+
+    it('should default to the cdn when version override does not match version', () => {
+      (window as any)["pdfWorkerSrc1.2.3"] = 'globaloverride';
+
+      pdfViewerFixture = TestBed.createComponent(PdfViewerComponent);
+      pdfViewer = pdfViewerFixture.debugElement.componentInstance;
+
+      expect(GlobalWorkerOptions.workerSrc).toBe(`https://cdn.jsdelivr.net/npm/pdfjs-dist@${curPdfJsVersion
+        }/legacy/build/pdf.worker.min.mjs`);
+    })
+
+    it('should take version override with version match', () => {
+      (window as any)[`pdfWorkerSrc${curPdfJsVersion}`] = 'globaloverride';
+
+      pdfViewerFixture = TestBed.createComponent(PdfViewerComponent);
+      pdfViewer = pdfViewerFixture.debugElement.componentInstance;
+
+      expect(GlobalWorkerOptions.workerSrc).toBe(`globaloverride`);
+    })
+  })
 });
